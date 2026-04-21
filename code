@@ -1,0 +1,465 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Doppler Effect - Pendulum Simulation</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=DM+Sans:wght@400;500;600&display=swap');
+ 
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+ 
+    :root {
+      --bg: #0d0d10;
+      --surface: #16161a;
+      --surface2: #1e1e24;
+      --border: rgba(255,255,255,0.08);
+      --text: #e8e6f0;
+      --muted: #888796;
+      --toward: #3ecfa0;
+      --away: #f07a5a;
+      --bob: #7f77dd;
+      --bob-stroke: #AFA9EC;
+      --accent: #AFA9EC;
+    }
+ 
+    body {
+      background-color: var(--bg);
+      color: var(--text);
+      font-family: 'DM Sans', sans-serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 24px 16px 40px;
+    }
+ 
+    header { text-align: center; margin-bottom: 24px; }
+    header h1 {
+      font-family: 'Space Mono', monospace;
+      font-size: clamp(18px, 4vw, 28px);
+      font-weight: 700;
+      letter-spacing: -0.5px;
+      color: var(--text);
+    }
+    header p {
+      font-size: 13px;
+      color: var(--muted);
+      margin-top: 6px;
+      max-width: 520px;
+      line-height: 1.6;
+    }
+ 
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 20px;
+      width: 100%;
+      max-width: 700px;
+    }
+ 
+    .btn-row { display: flex; gap: 8px; margin-bottom: 14px; flex-wrap: wrap; }
+ 
+    button {
+      padding: 7px 18px;
+      font-size: 13px;
+      font-family: 'DM Sans', sans-serif;
+      font-weight: 500;
+      border-radius: 8px;
+      border: 1px solid rgba(255,255,255,0.12);
+      background: var(--surface2);
+      color: var(--muted);
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    button:hover { background: #2a2a32; color: var(--text); }
+    button.active { background: rgba(127,119,221,0.18); color: var(--accent); border-color: rgba(127,119,221,0.4); }
+ 
+    .legend { display: flex; gap: 20px; margin-bottom: 10px; font-size: 12px; color: var(--muted); align-items: center; }
+    .leg-line { width: 24px; height: 3px; border-radius: 2px; display: inline-block; margin-right: 5px; vertical-align: middle; }
+ 
+    canvas { width: 100%; display: block; border-radius: 10px; border: 1px solid var(--border); background: #0a0a0e; }
+ 
+    .info-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-top: 14px; }
+    .chip { background: var(--surface2); border: 1px solid var(--border); border-radius: 10px; padding: 10px 8px; text-align: center; }
+    .chip .val { font-family: 'Space Mono', monospace; font-size: 16px; font-weight: 700; }
+    .chip .lbl { font-size: 10px; color: var(--muted); margin-top: 3px; line-height: 1.3; }
+    .toward { color: var(--toward); }
+    .away { color: var(--away); }
+    .live { color: var(--accent); }
+ 
+    .controls { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 14px; }
+    .ctrl { background: var(--surface2); border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px; }
+    .ctrl-label { font-size: 11px; color: var(--muted); margin-bottom: 8px; display: flex; justify-content: space-between; }
+    .ctrl-label span { font-family: 'Space Mono', monospace; font-size: 11px; color: var(--accent); }
+ 
+    input[type="range"] {
+      width: 100%;
+      -webkit-appearance: none;
+      appearance: none;
+      height: 4px;
+      border-radius: 2px;
+      background: rgba(255,255,255,0.1);
+      outline: none;
+      cursor: pointer;
+    }
+    input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 16px; height: 16px;
+      border-radius: 50%;
+      background: var(--accent);
+      border: 2px solid var(--bg);
+      cursor: pointer;
+    }
+    input[type="range"]::-moz-range-thumb {
+      width: 16px; height: 16px;
+      border-radius: 50%;
+      background: var(--accent);
+      border: 2px solid var(--bg);
+      cursor: pointer;
+    }
+ 
+    footer { margin-top: 20px; font-size: 11px; color: var(--muted); text-align: center; font-family: 'Space Mono', monospace; }
+ 
+    @media (max-width: 480px) {
+      .info-row { grid-template-columns: repeat(2, 1fr); }
+      .controls { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+ 
+<header>
+  <h1>doppler effect — pendulam simulation</h1>
+  <p>the pendulam bob acts as a moving speaker. sound waves compress as it swings toward the observer (higher pitch) and stretch as it moves away (lower pitch)</p>
+</header>
+ 
+<div class="card">
+  <div class="btn-row">
+    <button id="btnPlay" class="active">pause</button>
+    <button id="btnSound">enable sound</button>
+  </div>
+ 
+  <div class="legend">
+    <span><span class="leg-line" style="background:var(--toward)"></span>compressed — higher pitch</span>
+    <span><span class="leg-line" style="background:var(--away)"></span>stretched — lower pitch</span>
+  </div>
+ 
+  <canvas id="c" height="420"></canvas>
+ 
+  <div class="info-row">
+    <div class="chip">
+      <div class="val" id="vSource">0</div>
+      <div class="lbl">bob speed (px/s)</div>
+    </div>
+    <div class="chip">
+      <div class="val toward" id="pitchToward">—</div>
+      <div class="lbl">pitch toward</div>
+    </div>
+    <div class="chip">
+      <div class="val away" id="pitchAway">—</div>
+      <div class="lbl">pitch away</div>
+    </div>
+    <div class="chip">
+      <div class="val live" id="pitchLive">—</div>
+      <div class="lbl">live pitch</div>
+    </div>
+  </div>
+ 
+  <div class="controls">
+    <div class="ctrl">
+      <div class="ctrl-label">Amplitude <span id="ampVal">140</span> px</div>
+      <input type="range" id="ampSlider" min="40" max="190" value="140" step="1">
+    </div>
+    <div class="ctrl">
+      <div class="ctrl-label">base frequency <span id="freqVal">440</span> Hz</div>
+      <input type="range" id="freqSlider" min="200" max="900" value="440" step="1">
+    </div>
+    <div class="ctrl">
+      <div class="ctrl-label">pendulam length <span id="lenVal">160</span> px</div>
+      <input type="range" id="lenSlider" min="80" max="220" value="160" step="1">
+    </div>
+    <div class="ctrl">
+      <div class="ctrl-label">wave emit rate <span id="rateVal">normal</span></div>
+      <input type="range" id="rateSlider" min="1" max="5" value="3" step="1">
+    </div>
+  </div>
+</div>
+ 
+<footer>physics simulation · doppler effect · pendulum speaker</footer>
+ 
+<script>
+// @ts-nocheck
+ 
+const canvas = document.getElementById('c');
+const ctx = canvas.getContext('2d');
+let W, H;
+ 
+function resize() {
+  W = canvas.parentElement.offsetWidth - 40;
+  canvas.width = W;
+  H = 420;
+  canvas.height = H;
+}
+resize();
+window.addEventListener('resize', resize);
+ 
+let running = true;
+let amplitude = 140, baseFreq = 440, pendulumLength = 160, emitRate = 3;
+let soundEnabled = false, audioCtx = null, oscillator = null, gainNode = null;
+ 
+const SOUND_SPEED = 55;
+let waves = [], lastWaveTime = 0;
+let prevBobX = null, bobVx = 0;
+let angle = -Math.PI / 2.2, angleVel = 0.01, t = 0;
+ 
+function getPivot() {
+  return { x: W / 2, y: 58 };
+}
+ 
+function getBob() {
+  const p = getPivot();
+  return {
+    x: p.x + Math.sin(angle) * pendulumLength,
+    y: p.y + Math.cos(angle) * pendulumLength
+  };
+}
+ 
+function getObserver() {
+  return { x: W / 2, y: H - 42 };
+}
+ 
+const rateLabels = ['very slow', 'slow', 'normal', 'fast', 'very fast'];
+const rateIntervals = [0.18, 0.12, 0.07, 0.04, 0.022];
+ 
+document.getElementById('btnPlay').onclick = function() {
+  running = !running;
+  this.textContent = running ? 'pause' : 'play';
+  this.classList.toggle('active', running);
+};
+ 
+document.getElementById('btnSound').onclick = function() {
+  soundEnabled = !soundEnabled;
+  this.textContent = soundEnabled ? 'disable sound' : 'enable sound';
+  this.classList.toggle('active', soundEnabled);
+  if (soundEnabled) {
+    if (!audioCtx) {
+      audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      gainNode = audioCtx.createGain();
+      gainNode.gain.value = 0.15;
+      gainNode.connect(audioCtx.destination);
+    }
+    if (!oscillator) {
+      oscillator = audioCtx.createOscillator();
+      oscillator.type = 'sine';
+      oscillator.frequency.value = baseFreq;
+      oscillator.connect(gainNode);
+      oscillator.start();
+    }
+  } else {
+    if (oscillator) {
+      oscillator.stop();
+      oscillator.disconnect();
+      oscillator = null;
+    }
+  }
+};
+ 
+document.getElementById('ampSlider').oninput = function() {
+  amplitude = +this.value;
+  document.getElementById('ampVal').textContent = this.value;
+};
+document.getElementById('freqSlider').oninput = function() {
+  baseFreq = +this.value;
+  document.getElementById('freqVal').textContent = this.value;
+  if (oscillator) oscillator.frequency.value = baseFreq;
+};
+document.getElementById('lenSlider').oninput = function() {
+  pendulumLength = +this.value;
+  document.getElementById('lenVal').textContent = this.value;
+};
+document.getElementById('rateSlider').oninput = function() {
+  emitRate = +this.value;
+  document.getElementById('rateVal').textContent = rateLabels[emitRate - 1];
+};
+ 
+function spawnWave() {
+  const bob = getBob();
+  waves.push({ x: bob.x, y: bob.y, r: 4, vx: bobVx });
+}
+ 
+function dopplerFreq(vx, sx, sy) {
+  const obs = getObserver();
+  const dx = obs.x - sx, dy = obs.y - sy;
+  const dist = Math.sqrt(dx * dx + dy * dy) || 1;
+  const unitX = dx / dist;
+  const vProj = vx * unitX;
+  const denom = SOUND_SPEED - vProj;
+  if (denom <= 0) return baseFreq * 8;
+  return baseFreq * SOUND_SPEED / denom;
+}
+ 
+let lastTime = null;
+function frame(now) {
+  requestAnimationFrame(frame);
+  if (lastTime === null) lastTime = now;
+  const elapsed = Math.min((now - lastTime) / 1000, 0.05);
+  lastTime = now;
+ 
+  if (running) {
+    const omega2 = 9.8 / (pendulumLength * 0.5);
+    angleVel -= omega2 * Math.sin(angle) * elapsed;
+    angleVel *= 0.9998;
+    angle += angleVel * elapsed;
+    const maxAngle = (amplitude / 140) * Math.PI / 2.2;
+    if (Math.abs(angle) > maxAngle * 1.05) {
+      angle = Math.sign(angle) * maxAngle;
+      angleVel *= -0.95;
+    }
+    const bob = getBob();
+    bobVx = prevBobX !== null ? (bob.x - prevBobX) / elapsed : 0;
+    prevBobX = bob.x;
+    t += elapsed;
+    const interval = rateIntervals[emitRate - 1];
+    if (t - lastWaveTime > interval) { spawnWave(); lastWaveTime = t; }
+    waves.forEach(w => { w.r += SOUND_SPEED * elapsed; });
+    waves = waves.filter(w => w.r < Math.max(W, H) * 1.8);
+  }
+ 
+  draw();
+}
+ 
+function draw() {
+  ctx.clearRect(0, 0, W, H);
+  ctx.fillStyle = '#0a0a0e';
+  ctx.fillRect(0, 0, W, H);
+ 
+  const piv = getPivot(), bob = getBob(), obs = getObserver();
+ 
+  const colToward = '#3ecfa0', colAway = '#f07a5a';
+  const pivotCol = '#5f5e6a', rodCol = '#6a6a7a';
+  const bobFill = '#7F77DD', bobStroke = '#AFA9EC';
+  const obsBody = '#FAC775', obsFill = '#2a1a05';
+  const mutedCol = '#555560';
+ 
+  // grid
+  ctx.strokeStyle = 'rgba(255,255,255,0.03)';
+  ctx.lineWidth = 1;
+  for (let x = 0; x < W; x += 40) { ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, H); ctx.stroke(); }
+  for (let y = 0; y < H; y += 40) { ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke(); }
+ 
+  // waves
+  waves.forEach(w => {
+    const dx = obs.x - w.x, dy = obs.y - w.y;
+    const dist = Math.sqrt(dx * dx + dy * dy) || 1;
+    const unitX = dx / dist;
+    const toward = w.vx * unitX > 0;
+    const baseCol = toward ? colToward : colAway;
+    const maxR = Math.max(W, H) * 1.2;
+    const alpha = Math.max(0, 0.9 * (1 - w.r / maxR));
+    const hex = Math.floor(alpha * 255).toString(16).padStart(2, '0');
+    ctx.beginPath();
+    ctx.arc(w.x, w.y, w.r, 0, Math.PI * 2);
+    ctx.strokeStyle = baseCol + hex;
+    ctx.lineWidth = 2.2;
+    ctx.stroke();
+  });
+ 
+  // ground
+  ctx.beginPath(); ctx.moveTo(0, H - 14); ctx.lineTo(W, H - 14);
+  ctx.strokeStyle = '#2a2a35'; ctx.lineWidth = 2; ctx.stroke();
+  for (let x = 10; x < W; x += 16) {
+    ctx.beginPath(); ctx.moveTo(x, H - 14); ctx.lineTo(x - 8, H - 6);
+    ctx.strokeStyle = '#2a2a35'; ctx.lineWidth = 1; ctx.stroke();
+  }
+ 
+  // ceiling mount
+  ctx.beginPath(); ctx.moveTo(piv.x - 34, piv.y); ctx.lineTo(piv.x + 34, piv.y);
+  ctx.strokeStyle = pivotCol; ctx.lineWidth = 6; ctx.lineCap = 'round'; ctx.stroke();
+  for (let i = -3; i <= 3; i++) {
+    ctx.beginPath(); ctx.moveTo(piv.x + i * 9, piv.y - 4); ctx.lineTo(piv.x + i * 9 - 6, piv.y - 12);
+    ctx.strokeStyle = pivotCol + '88'; ctx.lineWidth = 1.2; ctx.stroke();
+  }
+ 
+  // dashed vertical axis
+  ctx.setLineDash([5, 5]);
+  ctx.beginPath(); ctx.moveTo(piv.x, piv.y); ctx.lineTo(piv.x, obs.y - 40);
+  ctx.strokeStyle = mutedCol + '66'; ctx.lineWidth = 1; ctx.stroke();
+  ctx.setLineDash([]);
+ 
+  // rod
+  ctx.beginPath(); ctx.moveTo(piv.x, piv.y); ctx.lineTo(bob.x, bob.y);
+  ctx.strokeStyle = rodCol; ctx.lineWidth = 2.5; ctx.lineCap = 'round'; ctx.stroke();
+ 
+  // pivot pin
+  ctx.beginPath(); ctx.arc(piv.x, piv.y, 5, 0, Math.PI * 2);
+  ctx.fillStyle = pivotCol; ctx.fill();
+ 
+  // bob
+  ctx.beginPath(); ctx.arc(bob.x, bob.y, 18, 0, Math.PI * 2);
+  ctx.fillStyle = bobFill; ctx.strokeStyle = bobStroke; ctx.lineWidth = 2.5; ctx.fill(); ctx.stroke();
+  ctx.font = '10px "Space Mono", monospace';
+  ctx.fillStyle = '#AFA9EC'; ctx.textAlign = 'center';
+  ctx.fillText('speaker', bob.x, bob.y + 31);
+ 
+  // velocity arrow
+  if (Math.abs(bobVx) > 10) {
+    const arrowLen = Math.min(Math.abs(bobVx) / 6, 36);
+    const dir = Math.sign(bobVx);
+    const ax = bob.x + dir * 21, ay = bob.y;
+    const ex = ax + dir * arrowLen;
+    ctx.beginPath(); ctx.moveTo(ax, ay); ctx.lineTo(ex, ay);
+    ctx.strokeStyle = obsBody; ctx.lineWidth = 2.5; ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(ex, ay);
+    ctx.lineTo(ex - dir * 8, ay - 5); ctx.lineTo(ex - dir * 8, ay + 5); ctx.closePath();
+    ctx.fillStyle = obsBody; ctx.fill();
+  }
+ 
+  // dashed line bob to observer
+  ctx.setLineDash([3, 5]);
+  ctx.beginPath(); ctx.moveTo(bob.x, bob.y + 20); ctx.lineTo(obs.x, obs.y - 36);
+  ctx.strokeStyle = mutedCol + '55'; ctx.lineWidth = 1; ctx.stroke();
+  ctx.setLineDash([]);
+ 
+  // observer figure
+  const ox = obs.x, oy = obs.y;
+  ctx.lineCap = 'round';
+  ctx.beginPath(); ctx.arc(ox, oy - 28, 10, 0, Math.PI * 2);
+  ctx.fillStyle = obsFill; ctx.strokeStyle = obsBody; ctx.lineWidth = 2; ctx.fill(); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(ox, oy - 18); ctx.lineTo(ox, oy - 2);
+  ctx.strokeStyle = obsBody; ctx.lineWidth = 2.5; ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(ox - 12, oy - 12); ctx.lineTo(ox + 12, oy - 12); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(ox, oy - 2); ctx.lineTo(ox - 9, oy + 12);
+  ctx.moveTo(ox, oy - 2); ctx.lineTo(ox + 9, oy + 12); ctx.stroke();
+  ctx.font = '11px "DM Sans", sans-serif'; ctx.fillStyle = obsBody; ctx.textAlign = 'center';
+  ctx.fillText('observer', ox, oy + 22);
+ 
+  // status label
+  const currentFreq = dopplerFreq(bobVx, bob.x, bob.y);
+  const dx0 = obs.x - bob.x, dy0 = obs.y - bob.y;
+  const dObs = Math.sqrt(dx0 * dx0 + dy0 * dy0) || 1;
+  const proj = bobVx * (dx0 / dObs);
+  const approaching = proj > 1, receding = proj < -1;
+  const dirLabel = approaching ? 'approaching → higher pitch' : receding ? 'receding → lower pitch' : 'crossing centre';
+  const statusCol = approaching ? colToward : receding ? colAway : '#AFA9EC';
+  ctx.font = '500 12px "DM Sans", sans-serif'; ctx.fillStyle = statusCol; ctx.textAlign = 'center';
+  ctx.fillText(dirLabel + '  |  ' + currentFreq.toFixed(0) + ' Hz', W / 2, H - 18);
+ 
+  const fToward = dopplerFreq(Math.abs(bobVx), bob.x, bob.y);
+  const fAway = dopplerFreq(-Math.abs(bobVx), bob.x, bob.y);
+  document.getElementById('vSource').textContent = Math.abs(bobVx).toFixed(0);
+  document.getElementById('pitchToward').textContent = fToward.toFixed(0) + ' Hz';
+  document.getElementById('pitchAway').textContent = fAway.toFixed(0) + ' Hz';
+  document.getElementById('pitchLive').textContent = currentFreq.toFixed(0) + ' Hz';
+ 
+  if (soundEnabled && oscillator) {
+    oscillator.frequency.setTargetAtTime(currentFreq, audioCtx.currentTime, 0.04);
+  }
+}
+ 
+requestAnimationFrame(frame);
+</script>
+</body>
+</html>
